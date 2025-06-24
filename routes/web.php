@@ -113,6 +113,7 @@ Route::middleware(['auth'])->group(function () {
     // File upload/download
     Route::post('/files/upload', [FileController::class, 'upload'])->name('files.upload');
     Route::get('/files/{id}/download', [FileController::class, 'download'])->name('files.download');
+    Route::get('/files/{id}/preview', [FileController::class, 'preview'])->name('files.preview');
 
     // Permissions
     Route::post('/permissions/assign', [PermissionController::class, 'assign'])->name('permissions.assign');

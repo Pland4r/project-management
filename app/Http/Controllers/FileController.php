@@ -6,6 +6,7 @@ use App\Models\GammeFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 
 class FileController extends Controller
 {
@@ -42,5 +43,27 @@ class FileController extends Controller
     {
         $file = GammeFile::findOrFail($id);
         return Storage::download($file->file_path, $file->original_name);
+    }
+
+    public function preview($id)
+    {
+        $file = GammeFile::findOrFail($id);
+        $path = storage_path('app/private/' . $file->file_path);
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        $mime = File::mimeType($path);
+
+        // For PDFs and images, show inline; for others, force download
+        $disposition = in_array($mime, ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'])
+            ? 'inline'
+            : 'attachment';
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => $disposition . '; filename="' . $file->original_name . '"'
+        ]);
     }
 } 

@@ -29,9 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withCommands([
-        \App\Console\Commands\SendProjectReminders::class,
+        
+        \App\Console\Commands\SendEssaiMessureReminders::class,
     ])
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('reminders:send')->hourly();
+        $schedule->command('reminders:essai-messure')->hourly();
+        
     })
     ->create();

@@ -17,26 +17,24 @@ class SendProjectReminders extends Command
         parent::__construct();
     }
     
-// In SendProjectReminders.php
-public function handle()
-{
-    $targetDate = now()->addMonth()->toDateString();
-    \Log::info("🕵️ Checking for projects starting on: ".$targetDate);
+    public function handle()
+    {
+        $targetDate = now()->addMonth()->toDateString();
+        \Log::info("🕵️ Checking for projects starting on: ".$targetDate);
 
-    // Add raw SQL logging
-    \DB::enableQueryLog();
-    
-    $projects = Project::whereDate('start_date', $targetDate)
-        ->with('user')
-        ->get();
+        // Add raw SQL logging
+        \DB::enableQueryLog();
+        
+        $projects = Project::whereDate('start_date', $targetDate)
+            ->with('user')
+            ->get();
 
-    \Log::info("📊 Found projects: ".$projects->count());
-    \Log::debug("🔍 SQL Query: " . json_encode(\DB::getQueryLog()));
+        \Log::info("📊 Found projects: ".$projects->count());
+        \Log::debug("🔍 SQL Query: " . json_encode(\DB::getQueryLog()));
 
-    foreach ($projects as $project) {
-        \Log::info("✉️ Attempting to send for project: ".$project->id);
-        Mail::to($project->user->email)->send(new ProjectReminderMail($project));
+        foreach ($projects as $project) {
+            \Log::info("✉️ Attempting to send for project: ".$project->id);
+            Mail::to($project->user->email)->send(new ProjectReminderMail($project));
+        }
     }
-}
-
 }

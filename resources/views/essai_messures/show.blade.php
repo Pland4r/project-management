@@ -240,10 +240,10 @@
                                         <i class="fas fa-download"></i>
                                         Download
                                     </a>
-                                    <button class="preview-btn" onclick="previewFile('{{ $file->original_name }}', '{{ $file->id }}')">
+                                    <a href="{{ url('files/' . $file->id . '/preview') }}" class="preview-btn" target="_blank">
                                         <i class="fas fa-eye"></i>
                                         Preview
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                             @endforeach
@@ -265,6 +265,14 @@
                 </div>
             @endif
         </div>
+    </div>
+</div>
+
+<!-- Modal for file preview -->
+<div id="filePreviewModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closePreviewModal()">&times;</span>
+        <div id="filePreviewBody" style="min-height:400px;"></div>
     </div>
 </div>
 
@@ -967,6 +975,10 @@
         justify-content: space-between;
     }
 }
+
+.modal { position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background: rgba(0,0,0,0.5);}
+.modal-content { background: #fff; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; position: relative;}
+.close { position: absolute; right: 20px; top: 10px; font-size: 2rem; cursor: pointer;}
 </style>
 
 <script>
@@ -990,17 +1002,31 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Preview function
-function previewFile(fileName, fileId) {
-    const extension = fileName.split('.').pop().toLowerCase();
-    const previewableTypes = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'txt'];
-    
-    if (previewableTypes.includes(extension)) {
-        // Open preview in new window/tab
-        window.open(`/files/preview/${fileId}`, '_blank');
+function previewFile(filename, fileId) {
+    const modal = document.getElementById('filePreviewModal');
+    const body = document.getElementById('filePreviewBody');
+    // Support PDF and images
+    const ext = filename.split('.').pop().toLowerCase();
+    let content = '';
+    if (['pdf'].includes(ext)) {
+        content = `<iframe src="{{ url('files') }}/${fileId}/preview" style="width:100%;height:600px;" frameborder="0"></iframe>`;
+    } else if (['png','jpg','jpeg','gif','bmp','webp'].includes(ext)) {
+        content = `<img src="{{ url('files') }}/${fileId}/preview" style="max-width:100%;max-height:600px;" />`;
     } else {
-        alert(`Preview not available for ${extension.toUpperCase()} files. Click Download to get the file.`);
+        content = `<a href="{{ url('files') }}/${fileId}/download" target="_blank">Download file</a>`;
     }
+    body.innerHTML = content;
+    modal.style.display = 'block';
+}
+
+function closePreviewModal() {
+    document.getElementById('filePreviewModal').style.display = 'none';
+    document.getElementById('filePreviewBody').innerHTML = '';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('filePreviewModal');
+    if (event.target == modal) closePreviewModal();
 }
 </script>
 @endsection

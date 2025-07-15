@@ -91,8 +91,15 @@ public function index()
 
 public function show($id)
 {
-    $project = Project::with(['responsible', 'members', 'gammes.files', 'essaiMessures.gammes.files'])->findOrFail($id);
-    return view('projects.show', compact('project'));
+    $project = Project::with([
+        'responsible',
+        'members',
+        'gammes.files',
+        'essaiMessures.gammes.files',
+        'essaiMessures.editors',
+    ])->findOrFail($id);
+    $users = \App\Models\User::where('is_admin', 0)->get();
+    return view('projects.show', compact('project', 'users'));
 }
 
 

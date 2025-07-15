@@ -80,4 +80,14 @@ public function projects()
     {
         return $this->hasMany(ProjectPermission::class);
     }
+
+    public function editableEssaisMessures()
+    {
+        return $this->belongsToMany(
+            EssaiMessure::class,
+            'project_permissions',
+            'user_id',
+            'essai_messure_id'
+        )->wherePivot('permission_type', 'edit');
+    }
 }

@@ -109,6 +109,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/essai-messures/{id}', [EssaiMessureController::class, 'show'])->name('essai_messures.show');
     Route::get('/essai-messures/{id}/edit', [EssaiMessureController::class, 'edit'])->name('essai_messures.edit');
     Route::put('/essai-messures/{id}', [EssaiMessureController::class, 'update'])->name('essai_messures.update');
+    Route::put('/essai_messures/{id}/editors', [App\Http\Controllers\EssaiMessureController::class, 'updateEditors'])->name('essai_messures.update_editors');
 
     // File upload/download
     Route::post('/files/upload', [FileController::class, 'upload'])->name('files.upload');

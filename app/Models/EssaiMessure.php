@@ -35,6 +35,16 @@ class EssaiMessure extends Model
         return $this->hasMany(GammeFile::class, 'essai_messure_id');
     }
 
+    public function editors()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'project_permissions',
+            'essai_messure_id',
+            'user_id'
+        )->wherePivot('permission_type', 'edit');
+    }
+
     // Validation rules stub
     public static function rules()
     {

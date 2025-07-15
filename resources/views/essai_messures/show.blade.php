@@ -142,6 +142,25 @@
 
                 <div class="detail-card hover-card">
                     <div class="detail-icon">
+                        <i class="fas fa-users-cog"></i>
+                    </div>
+                    <div class="detail-content">
+                        <div class="detail-label">Editors</div>
+                        <div class="detail-value">
+                            @if($essaiMessure->editors && $essaiMessure->editors->count())
+                                @foreach($essaiMessure->editors as $editor)
+                                    <span class="badge badge-info">{{ $editor->name }}</span>@if(!$loop->last), @endif
+                                @endforeach
+                            @else
+                                <span class="text-muted">No editors assigned</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="card-glow"></div>
+                </div>
+
+                <div class="detail-card hover-card">
+                    <div class="detail-icon">
                         <i class="fas fa-calendar-alt"></i>
                     </div>
                     <div class="detail-content">

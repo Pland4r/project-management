@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\EssaiMessureGamme;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\ProjectPermission;
 
 class EssaiMessureController extends Controller
 {
@@ -67,25 +69,66 @@ class EssaiMessureController extends Controller
 
     public function edit($id)
     {
-        $essaiMessure = EssaiMessure::findOrFail($id);
+        $essaiMessure = EssaiMessure::with('editors')->findOrFail($id);
         $userId = Auth::id();
-        $canEdit = ($userId === $essaiMessure->user_id) || \App\Models\ProjectPermission::canEdit($userId, $essaiMessure->id);
+        $canEdit = ($userId === $essaiMessure->user_id) || $essaiMessure->editors->contains('id', $userId);
         if (!$canEdit) {
             abort(403, 'You do not have permission to edit this Essai/Messure.');
         }
-        return view('essai_messures.edit', compact('essaiMessure'));
+        $users = User::where('is_admin', 0)->get();
+        return view('essai_messures.edit', compact('essaiMessure', 'users'));
     }
 
     public function update(Request $request, $id)
     {
-        $essaiMessure = EssaiMessure::findOrFail($id);
+        $essaiMessure = EssaiMessure::with('editors')->findOrFail($id);
         $userId = Auth::id();
-        $canEdit = ($userId === $essaiMessure->user_id) || \App\Models\ProjectPermission::canEdit($userId, $essaiMessure->id);
+        $canEdit = ($userId === $essaiMessure->user_id) || $essaiMessure->editors->contains('id', $userId);
         if (!$canEdit) {
             abort(403, 'You do not have permission to update this Essai/Messure.');
         }
         $request->validate(EssaiMessure::rules());
         $essaiMessure->update($request->all());
+        // Sync editors
+        $editors = $request->input('editors', []);
+        foreach ($editors as $editorId) {
+            ProjectPermission::updateOrCreate([
+                'user_id' => $editorId,
+                'project_id' => $essaiMessure->project_id,
+                'essai_messure_id' => $essaiMessure->id,
+            ], [
+                'permission_type' => 'edit',
+            ]);
+        }
+        // Remove permissions for users not in the list
+        ProjectPermission::where('essai_messure_id', $essaiMessure->id)
+            ->where('permission_type', 'edit')
+            ->whereNotIn('user_id', $editors)
+            ->delete();
         return redirect()->route('essai_messures.show', $essaiMessure->id)->with('success', 'Essai/Messure updated.');
+    }
+
+    public function updateEditors(Request $request, $id)
+    {
+        $essaiMessure = \App\Models\EssaiMessure::findOrFail($id);
+        // Only the owner can update editors
+        if (auth()->id() !== $essaiMessure->user_id) {
+            abort(403);
+        }
+        $editors = $request->input('editors', []);
+        foreach ($editors as $editorId) {
+            \App\Models\ProjectPermission::updateOrCreate([
+                'user_id' => $editorId,
+                'project_id' => $essaiMessure->project_id,
+                'essai_messure_id' => $essaiMessure->id,
+            ], [
+                'permission_type' => 'edit',
+            ]);
+        }
+        \App\Models\ProjectPermission::where('essai_messure_id', $essaiMessure->id)
+            ->where('permission_type', 'edit')
+            ->whereNotIn('user_id', $editors)
+            ->delete();
+        return redirect()->back()->with('success', 'Editors updated.');
     }
 } 

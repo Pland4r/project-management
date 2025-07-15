@@ -1,4 +1,5 @@
 @extends('layouts.app')
+
 @section('content')
 <div class="container py-5">
     <!-- Project Details Card -->
@@ -17,7 +18,7 @@
             </div>
         </div>
     </div>
-    
+        
     <!-- Specifications Card -->
     <div class="modern-card mb-5 centered-spec-card custom-card">
         <div class="modern-card-header">
@@ -43,7 +44,7 @@
             </ul>
         </div>
     </div>
-    
+        
     <!-- Essais/Messures Card -->
     <div class="modern-card custom-card">
         <div class="modern-card-header d-flex justify-content-between align-items-center flex-wrap">
@@ -69,16 +70,20 @@
                         <th class="col-comment">Issues</th>
                         <th class="col-status">Etat</th>
                         <th class="col-actions">Actions</th>
+                        <th class="col-editors">Editors</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($project->essaiMessures as $essai)
                         @php
                             $canEdit = (auth()->id() === $essai->user_id) || \App\Models\ProjectPermission::canEdit(auth()->id(), $essai->id);
+                            $isOwner = auth()->id() === $essai->user_id;
                         @endphp
                         <tr class="table-row-animated" data-status="{{ strtolower($essai->etat) }}">
                             <td class="col-type">{{ $essai->type }}</td>
-                            <td class="col-name"><a href="{{ route('essai_messures.show', $essai->id) }}" class="essai-link">{{ $essai->name }}</a></td>
+                            <td class="col-name">
+                                <a href="{{ route('essai_messures.show', $essai->id) }}" class="essai-link">{{ $essai->name }}</a>
+                            </td>
                             <td class="col-person">{{ $essai->person_name ?? 'N/A' }}</td>
                             <td class="col-person">{{ $essai->validator_name ?? 'N/A' }}</td>
                             <td class="col-date">{{ $essai->start_date ?? 'N/A' }}</td>
@@ -93,10 +98,36 @@
                                     {!! $essai->issues ? e($essai->issues) : '<span class="null-value">no issues</span>' !!}
                                 </div>
                             </td>
-                            <td class="col-status"><span class="etat-badge etat-{{ strtolower($essai->etat) }} animated-badge">{{ ucfirst($essai->etat) }}</span></td>
-                            @if($canEdit)
-                                <td><a href="{{ route('essai_messures.edit', $essai->id) }}" class="btn btn-sm btn-primary">Edit</a></td>
-                            @endif
+                            <td class="col-status">
+                                <span class="etat-badge etat-{{ strtolower($essai->etat) }} animated-badge">{{ ucfirst($essai->etat) }}</span>
+                            </td>
+                            <td class="col-actions">
+                                @if($canEdit)
+                                    <a href="{{ route('essai_messures.edit', $essai->id) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                @else
+                                    <span class="text-muted">No access</span>
+                                @endif
+                            </td>
+                            <td class="col-editors">
+                                @if($isOwner)
+                                    <button class="btn btn-info btn-sm manage-editors-btn" data-essai-id="{{ $essai->id }}">
+                                        <i class="fas fa-users"></i> Manage
+                                    </button>
+                                @else
+                                    <div class="editors-display">
+                                        @if($essai->editors && $essai->editors->count())
+                                            @foreach($essai->editors as $editor)
+                                                <span class="badge badge-info">{{ $editor->name }}</span>
+                                                @if(!$loop->last), @endif
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted">No editors</span>
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -105,7 +136,75 @@
     </div>
 </div>
 
+<!-- Modals Container (Outside of table) -->
+<div id="modals-container">
+    @foreach($project->essaiMessures as $essai)
+        @if(auth()->id() === $essai->user_id)
+            <div id="editors-modal-{{ $essai->id }}" class="modal" data-essai-id="{{ $essai->id }}">
+                <div class="modal-backdrop" onclick="hideEditorsModal({{ $essai->id }})"></div>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-users"></i>
+                            Manage Editors for "{{ $essai->name }}"
+                        </h5>
+                        <button type="button" class="modal-close" onclick="hideEditorsModal({{ $essai->id }})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form method="POST" action="{{ route('essai_messures.update_editors', $essai->id) }}" class="editors-form">
+                        @csrf
+                        @method('PUT')
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="editors-{{ $essai->id }}" class="form-label">
+                                    <i class="fas fa-user-plus"></i>
+                                    Select editors who can modify this essai:
+                                </label>
+                                <div class="editors-select-container">
+                                    <select name="editors[]" id="editors-{{ $essai->id }}" multiple class="editors-select">
+                                        @foreach($users->where('id', '!=', $essai->user_id) as $user)
+                                            <option value="{{ $user->id }}" 
+                                                {{ $essai->editors && $essai->editors->contains($user->id) ? 'selected' : '' }}>
+                                                {{ $user->name }} ({{ $user->email }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <small class="form-text">Hold Ctrl/Cmd to select multiple editors</small>
+                            </div>
+                            
+                            @if($essai->editors && $essai->editors->count())
+                                <div class="current-editors">
+                                    <h6><i class="fas fa-users-cog"></i> Current Editors:</h6>
+                                    <div class="editors-list">
+                                        @foreach($essai->editors as $editor)
+                                            <span class="editor-badge">
+                                                <i class="fas fa-user"></i>
+                                                {{ $editor->name }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" onclick="hideEditorsModal({{ $essai->id }})" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+    @endforeach
+</div>
+
 <style>
+/* Previous CSS remains the same... */
 /* Dark Mode Compatible CSS Variables */
 :root {
     /* Light mode colors */
@@ -420,10 +519,10 @@ body {
 .modern-table .col-person { width: 10%; }
 .modern-table .col-comment { width: 15%; }
 .modern-table .col-status { width: 8%; }
-.modern-table .col-actions { width: 7%; }
+.modern-table .col-actions { width: 10%; }
+.modern-table .col-editors { width: 12%; }
 
-.modern-table th, 
-.modern-table td {
+.modern-table th, .modern-table td {
     padding: 1rem 0.8rem;
     text-align: left;
     font-weight: 600;
@@ -557,8 +656,8 @@ body {
     100% { box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); }
 }
 
-.etat-pending { 
-    background: var(--warning-gradient); 
+.etat-pending {
+    background: var(--warning-gradient);
     color: var(--text-inverse);
     animation: pendingPulse 2s ease-in-out infinite;
 }
@@ -568,13 +667,13 @@ body {
     50% { opacity: 0.8; }
 }
 
-.etat-approved { 
-    background: var(--success-gradient); 
+.etat-approved {
+    background: var(--success-gradient);
     color: var(--text-inverse);
 }
 
-.etat-rejected { 
-    background: var(--danger-gradient); 
+.etat-rejected {
+    background: var(--danger-gradient);
     color: var(--text-inverse);
 }
 
@@ -614,6 +713,7 @@ body {
 
 .essai-link:hover {
     color: var(--stellantis-accent);
+    transform: scale(1.05);
     text-decoration: none;
 }
 
@@ -629,7 +729,7 @@ body {
     50% { opacity: 0.4; }
 }
 
-/* Edit Button */
+/* Button Styles */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -657,9 +757,70 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+.btn-info {
+    background: #17a2b8;
+    color: var(--text-inverse);
+}
+
+.btn-info:hover {
+    background: #138496;
+    color: var(--text-inverse);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: var(--text-inverse);
+}
+
+.btn-success:hover {
+    background: #059669;
+    color: var(--text-inverse);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: var(--text-inverse);
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    color: var(--text-inverse);
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
 .btn-sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.8rem;
+}
+
+/* Badge Styles */
+.badge {
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    font-size: 0.75em;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.375rem;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: var(--text-inverse);
+}
+
+.text-muted {
+    color: var(--text-muted);
 }
 
 /* Specifications Tree Styles */
@@ -806,6 +967,227 @@ body {
     text-decoration: none;
 }
 
+/* Enhanced Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    animation: modalFadeIn 0.3s ease;
+}
+
+.modal.active {
+    display: flex !important;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: var(--card-bg);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--card-border);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 10;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem 1rem;
+    border-bottom: 1px solid var(--border-muted);
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 1.5rem 2rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem 2rem 1.5rem;
+    border-top: 1px solid var(--border-muted);
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-label i {
+    margin-right: 0.5rem;
+    color: var(--stellantis-primary);
+}
+
+.editors-select-container {
+    position: relative;
+}
+
+.editors-select {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.75rem;
+    border: 2px solid var(--border-muted);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    resize: vertical;
+}
+
+.editors-select:focus {
+    outline: none;
+    border-color: var(--stellantis-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.editors-select option {
+    padding: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.editors-select option:checked {
+    background: var(--stellantis-primary);
+    color: var(--text-inverse);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.current-editors {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-muted);
+}
+
+.current-editors h6 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.current-editors h6 i {
+    color: var(--stellantis-primary);
+}
+
+.editors-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.editor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--stellantis-primary);
+    color: var(--text-inverse);
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.editor-badge:hover {
+    background: var(--stellantis-accent);
+    transform: scale(1.05);
+}
+
+.editors-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .modern-table {
@@ -819,61 +1201,83 @@ body {
 }
 
 @media (max-width: 991px) {
-    .container { 
-        padding: 0 0.5rem; 
+    .container {
+        padding: 0 0.5rem;
     }
-    .modern-card { 
-        padding: 1.5rem 1rem; 
+    .modern-card {
+        padding: 1.5rem 1rem;
     }
     .modern-table {
         min-width: 1000px;
     }
-    .modern-table th, 
-    .modern-table td { 
-        padding: 0.7rem 0.5rem; 
-        font-size: 0.85rem; 
+    .modern-table th,
+    .modern-table td {
+        padding: 0.7rem 0.5rem;
+        font-size: 0.85rem;
     }
-    .project-title { 
-        font-size: 2rem; 
+    .project-title {
+        font-size: 2rem;
     }
     .modern-card-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
     }
+    .modal-content {
+        width: 95%;
+        margin: 1rem;
+    }
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
 }
 
 @media (max-width: 768px) {
-    .modern-card { 
-        padding: 1rem 0.5rem; 
+    .modern-card {
+        padding: 1rem 0.5rem;
     }
-    .modern-card-header { 
-        font-size: 1.1rem; 
+    .modern-card-header {
+        font-size: 1.1rem;
     }
-    .modern-card-title { 
-        font-size: 1.1rem; 
+    .modern-card-title {
+        font-size: 1.1rem;
     }
-    .modern-table { 
-        min-width: 800px; 
+    .modern-table {
+        min-width: 800px;
     }
-    .project-title { 
-        font-size: 1.8rem; 
+    .project-title {
+        font-size: 1.8rem;
     }
-    .modern-create-btn { 
-        font-size: 0.9rem; 
-        padding: 0.5em 1.5em; 
+    .modern-create-btn {
+        font-size: 0.9rem;
+        padding: 0.5em 1.5em;
+    }
+    .modal-content {
+        width: 98%;
+        margin: 0.5rem;
     }
 }
 
 @media (max-width: 576px) {
-    .modern-card { 
-        padding: 0.8rem 0.3rem; 
+    .modern-card {
+        padding: 0.8rem 0.3rem;
     }
-    .modern-table { 
-        min-width: 700px; 
+    .modern-table {
+        min-width: 700px;
     }
-    .project-title { 
-        font-size: 1.6rem; 
+    .project-title {
+        font-size: 1.6rem;
+    }
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -896,7 +1300,8 @@ body {
     }
     
     .animated-icon,
-    .modern-create-btn {
+    .modern-create-btn,
+    .modal {
         display: none !important;
     }
 }
@@ -971,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Enhanced button click effect
-    document.querySelectorAll('.modern-create-btn').forEach(function(btn) {
+    document.querySelectorAll('.modern-create-btn, .btn').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             // Create ripple effect
             const ripple = document.createElement('span');
@@ -995,6 +1400,15 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 ripple.remove();
             }, 600);
+        });
+    });
+
+    // Enhanced manage editors button functionality
+    document.querySelectorAll('.manage-editors-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const essaiId = this.dataset.essaiId;
+            showEditorsModal(essaiId);
         });
     });
 
@@ -1125,7 +1539,54 @@ document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
         }
     });
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-backdrop')) {
+            const modal = e.target.closest('.modal');
+            if (modal) {
+                const essaiId = modal.dataset.essaiId;
+                hideEditorsModal(essaiId);
+            }
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const activeModal = document.querySelector('.modal.active');
+            if (activeModal) {
+                const essaiId = activeModal.dataset.essaiId;
+                hideEditorsModal(essaiId);
+            }
+        }
+    });
 });
+
+// Enhanced Modal Functions
+function showEditorsModal(id) {
+    const modal = document.getElementById('editors-modal-' + id);
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        
+        // Focus on the select element for better UX
+        setTimeout(() => {
+            const select = modal.querySelector('.editors-select');
+            if (select) {
+                select.focus();
+            }
+        }, 300);
+    }
+}
+
+function hideEditorsModal(id) {
+    const modal = document.getElementById('editors-modal-' + id);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+}
 
 // Add ripple animation CSS
 const style = document.createElement('style');
@@ -1139,5 +1600,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 </script>
-
 @endsection

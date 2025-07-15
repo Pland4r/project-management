@@ -13,3 +13,7 @@
 
    INFO  No scheduled commands are ready to run.  
 
+
+  2025-07-12 07:00:30 Running ["artisan" reminders:essai-messure] ............................................ 6s DONE
+  ⇂ "C:\xampp\php\php.exe" "artisan" reminders:essai-messure > "NUL" 2>&1  
+

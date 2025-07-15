@@ -85,6 +85,18 @@
                                value="{{ old('validator_name', $essaiMessure->validator_name) }}">
                         <div class="input-glow"></div>
                     </div>
+                    <div class="form-group animated-input">
+                        <label for="editors">Editors (can edit this Essai/Messure)</label>
+                        <select name="editors[]" id="editors" class="form-control hover-input" multiple>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}" {{ in_array($user->id, old('editors', $essaiMessure->editors->pluck('id')->toArray() ?? [])) ? 'selected' : '' }}>
+                                    {{ $user->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl (Windows) or Command (Mac) to select multiple users.</small>
+                        <div class="input-glow"></div>
+                    </div>
                 </div>
             </div>
 

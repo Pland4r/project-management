@@ -894,6 +894,7 @@
         </div>
         @if (Route::has('login'))
             <nav class="flex items-center justify-end gap-4">
+            <a href="#" id="doc-btn" class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] text-[#1b1b18] border border-transparent hover:border-[#19140035] dark:hover:border-[#3E3E3A] rounded-sm text-sm leading-normal" style="background: var(--stellantis-primary); color: white; font-weight: bold; text-decoration: none; border-radius: 999px;">Documentation</a>
                 <a href="{{ route('restart.session') }}" 
                    class="inline-block px-5 py-1.5 dark:text-[#EDEDEC] text-[#1b1b18] border border-transparent hover:border-[#19140035] dark:hover:border-[#3E3E3A] rounded-sm text-sm leading-normal">
                     Log in
@@ -908,6 +909,29 @@
             </nav>
         @endif
     </header>
+
+    <!-- Documentation Section (hidden by default) -->
+    <section id="documentation-section" style="display:none; max-width: 900px; margin: 0 auto 2rem auto; background: var(--bg-card); border-radius: 16px; box-shadow: var(--shadow-lg); border: 1px solid var(--border-primary); padding: 2.5rem; z-index: 100; position: relative;">
+        <h2 style="font-size:2rem; font-weight:bold; color:var(--stellantis-primary); margin-bottom:1.5rem;">Documentation de la Plateforme</h2>
+        <h3 style="color:var(--stellantis-secondary); margin-top:1.2rem;">Pour les utilisateurs simples :</h3>
+        <ul style="margin-left:1.5rem; margin-bottom:1.5rem;">
+            <li><b>Inscription :</b> Cliquez sur "Register" pour créer un compte. Attendez la validation de l'administrateur.</li>
+            <li><b>Connexion :</b> Utilisez "Log in" pour accéder à votre espace.</li>
+            <li><b>Créer un essai ou une mesure :</b> Dans un projet, cliquez sur "Créer un essai/messure" et complétez le formulaire.</li>
+            <li><b>Gérer les éditeurs :</b> En tant que créateur d'un essai/messure, cliquez sur "Gérer les éditeurs" pour donner à d'autres utilisateurs le droit de modifier cet essai/messure.</li>
+            <li><b>Consulter et modifier :</b> Vous pouvez consulter et modifier les essais/messures auxquels vous avez accès.</li>
+            <li><b>Recevoir des rappels :</b> Vous recevrez des rappels automatiques par email selon les échéances définies.</li>
+        </ul>
+        <h3 style="color:var(--stellantis-secondary); margin-top:1.2rem;">Pour les administrateurs :</h3>
+        <ul style="margin-left:1.5rem;">
+            <li><b>Validation des utilisateurs :</b> Accédez à la liste des utilisateurs en attente et validez ou refusez les inscriptions.</li>
+            <li><b>Gestion des projets :</b> Vous pouvez voir, modifier ou supprimer tous les projets.</li>
+            <li><b>Gestion des essais/messures :</b> Vous avez un accès complet à tous les essais/messures et pouvez attribuer des droits d'édition à n'importe quel utilisateur.</li>
+            <li><b>Suivi des activités :</b> Consultez l'historique des actions et des permissions attribuées.</li>
+            <li><b>Configuration :</b> Accédez aux paramètres avancés pour personnaliser la plateforme selon les besoins de votre organisation.</li>
+        </ul>
+        <button onclick="document.getElementById('documentation-section').style.display='none'" style="margin-top:2rem; background:var(--stellantis-primary); color:white; border:none; border-radius:8px; padding:0.7rem 2rem; font-weight:bold; cursor:pointer;">Fermer la documentation</button>
+    </section>
 
     <!-- Real-time Statistics Section -->
     <section class="stats-section">
@@ -1673,6 +1697,20 @@
         // Initialize mobile navigation on resize
         window.addEventListener('resize', initMobileNavigation);
         initMobileNavigation();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var docBtn = document.getElementById('doc-btn');
+            var docSection = document.getElementById('documentation-section');
+            if(docBtn && docSection) {
+                docBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    docSection.style.display = (docSection.style.display === 'none' || docSection.style.display === '') ? 'block' : 'none';
+                    if(docSection.style.display === 'block') {
+                        window.scrollTo({ top: docSection.offsetTop - 30, behavior: 'smooth' });
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>
